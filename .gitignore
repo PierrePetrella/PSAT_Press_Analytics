@@ -1,3 +1,9 @@
+data/*
+.DS_Store
+.ipynb_checkpoints/*
+/GloVe-master/*
+.ipynb_checkpoints
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
