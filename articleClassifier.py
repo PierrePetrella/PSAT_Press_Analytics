@@ -97,16 +97,16 @@ class ArticleClassifier:
     def company_relevance_score(self,plain_text,sig_words_list): 
         sig_words = np.array(sig_words_list)[:,0]
         sig_words_score = np.array(sig_words_list)[:,1].astype(np.float) #CHANGED
-        sig_words_score = sig_words_score/np.sum(sig_words_score) # normalizing all of the sig_words scores
+        sig_words_score = sig_words_score/(np.sum(sig_words_score) +self.epsilon)# normalizing all of the sig_words scores
         sum_exp = np.sum([np.exp(float(score)) for score in sig_words_score]) # denominator for computing the soft max
         n_words = len(plain_text)
 
         words_in_text = 0
         for i in range(len(sig_words_list)):
-            word_soft_max = np.exp(float(sig_words_score[i]))/sum_exp
+            word_soft_max = np.exp(float(sig_words_score[i]))/(sum_exp +self.epsilon)
             words_in_text += word_soft_max*plain_text.count(sig_words[i])
         
-        return words_in_text/n_words+self.epsilon # relevance score for the company
+        return words_in_text/(n_words+self.epsilon) # relevance score for the company
     
     
     
@@ -199,13 +199,13 @@ class ArticleClassifier:
         acc1 = list()
         for preds in self.pred_eval:
             acc1.append(any(preds))
-        self.score1 = round(np.sum(acc1)/len(self.pred_eval),self.rounding)
+        self.score1 = round(np.sum(acc1)/(len(self.pred_eval)+self.epsilon),self.rounding)
 
         ########## How many times ALL the labels are present in the prediction. ##########
         acc2 = list()
         for labels in self.article_eval:
             acc2.append(labels.count(1)== len (labels)) 
-        self.score2 = round(np.sum(acc2)/len(self.pred_eval),self.rounding)
+        self.score2 = round(np.sum(acc2)/(len(self.pred_eval)+self.epsilon),self.rounding)
 
         ########## How many times ALL labels are predicted in the FIRST predictions. ##########
         acc3 = list()
@@ -213,7 +213,7 @@ class ArticleClassifier:
             labels = self.article_eval[i]
             preds = self.pred_eval[i]
             acc3.append(preds[:len(labels)].count(1)== len(labels))
-        self.score3 =  round(np.sum(acc3)/len(self.pred_eval),self.rounding)
+        self.score3 =  round(np.sum(acc3)/(len(self.pred_eval)+self.epsilon),self.rounding)
 
         ########## How many predictions are wrong wrt. how many are right (TRUE, FALSE) ##########
         true_pred = 0
@@ -221,7 +221,7 @@ class ArticleClassifier:
         for preds in self.pred_eval:
             true_pred += np.sum(preds)
             pred += len(preds)
-        self.score4 = round(true_pred/pred,self.rounding)
+        self.score4 = round(true_pred/(pred + self.epsilon),self.rounding)
 
         ########## Average number of predictions vs average number of labels ##########
         len_label = list()
@@ -275,10 +275,10 @@ class ArticleClassifier:
                     accuracy = 0
                     F1score = 0
                 else:
-                    accuracy = true_pos/positive
-                    precision = true_pos/(true_pos+false_pos)
-                    recall = true_pos/(true_pos+false_neg)
-                    F1score = 2*(precision*recall)/(precision+recall)
+                    accuracy = true_pos/(positive + self.epsilon)
+                    precision = true_pos/(true_pos+false_pos + self.epsilon)
+                    recall = true_pos/(true_pos+false_neg + self.epsilon)
+                    F1score = 2*(precision*recall)/(precision+recall+ self.epsilon)
 
                 self.company_positive.append(positive)
                 self.company_accuracy_list.append(accuracy)
@@ -289,14 +289,14 @@ class ArticleClassifier:
         ########## Precision & RECALL ########## per Article      
         #alpha_eval_list
         for i in range(len(self.article_labels)):
-            alpha_eval = pow((1-((self.beta*self.article_eval[i].count(0) + self.gamma*self.pred_eval[i].count(0))/(len(set(self.pred_labels[i]+self.article_labels[i]))))),self.alpha) 
+            alpha_eval = pow((1-((self.beta*self.article_eval[i].count(0) + self.gamma*self.pred_eval[i].count(0))/(len(set(self.pred_labels[i]+self.article_labels[i]))+ self.epsilon))),self.alpha) 
             self.alpha_eval_list.append(alpha_eval)
         #article_recall_list
         for label in self.article_eval:
-            self.article_recall_list.append(label.count(1)/(len(label)+self.epsilon))
+            self.article_recall_list.append((label.count(1)+self.epsilon)/(len(label)+self.epsilon))
         #article_precision_list
         for pred in self.pred_eval:
-             self.article_precision_list.append(pred.count(1)/(len(pred)+self.epsilon))
+             self.article_precision_list.append((pred.count(1)+self.epsilon)/(len(pred)+self.epsilon))
     
     def print_eval(self, verbose = 2):
         #verbose = 0,1
